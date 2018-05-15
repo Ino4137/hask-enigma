@@ -25,14 +25,17 @@ data From =
   F | B 
   deriving (Eq, Show)
 
+-- Should (Vector Part) be a (ExceptT Reflector Vector Rotor)?
 type Part = Either Reflector Rotor
 
 data Enigma = Enigma {
-  -- ammount of rotors
+  -- amount of rotors
   rotorsN :: Word,
   -- starting positions, with 0 as a no-offset
   sPositions :: Vector Word,
   -- the whole machinery
-  rotors :: Vector Part 
+  rotors :: Vector Part,
+  -- redirecting bidirectionally
+  swaps :: IntMap Word
 } deriving Show
 
