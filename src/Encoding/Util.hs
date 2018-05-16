@@ -5,6 +5,7 @@ import           Data.IntMap (IntMap)
 import qualified Data.Vector as V
 import           Data.Vector (Vector)
 import           Data.Tuple
+import           Data.Char (toUpper, ord)
 
 import Encoding.Types
 
@@ -24,3 +25,6 @@ doubleMirror = concatMap (\x -> [x, swap x])
 
 deconst :: V.Vector Part -> (Part, Vector Part)
 deconst = (,) <$> V.head <*> V.tail
+
+numberify :: String -> [Int]
+numberify = map (subtract 65 . ord . toUpper)

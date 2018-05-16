@@ -2,6 +2,7 @@ module Encoding.Types where
 
 import Data.Vector (Vector)
 import Data.IntMap (IntMap)
+import Data.Map    (Map)
 
 data Connection = Connection {
   forward :: Int,
@@ -13,12 +14,12 @@ data Rotor = Rotor {
   interval :: Int,
   -- clock that once reaches 26 pushes rotor behind it a rotation further
   clock :: Int,
-  state :: Vector Connection
+  stateRot :: Vector Connection
 } deriving Show
 
 newtype Reflector = Reflector {
   -- used IntMap for the ease of use
-  stateR :: IntMap Int
+  stateRef :: IntMap Int
 } deriving Show
 
 data From = 
@@ -36,6 +37,6 @@ data Enigma = Enigma {
   -- the whole machinery
   rotors :: Vector Part,
   -- redirecting bidirectionally
-  swaps :: IntMap Int
+  swaps :: Map Char Char
 } deriving Show
 

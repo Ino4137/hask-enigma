@@ -1,16 +1,18 @@
 module Encoding.Std where
 
-import qualified Data.IntMap as M
+import qualified Data.Map as M
+import           Data.Map (Map)
+import qualified Data.IntMap as IM
 import           Data.IntMap (IntMap)
 import qualified Data.Vector as V
 import           Data.Vector (Vector)
 import           Data.Bifunctor
 
-import Encoding.Types
-import Encoding.Util
+import           Encoding.Types
+import           Encoding.Util
 
 stdAmm :: Int
-stdAmm = 8
+stdAmm = 3
 
 -- meaningless numbers
 stdOffsets :: Vector Int
@@ -34,19 +36,19 @@ stdRotors = makeRotors . (V.map . V.map) (uncurry Connection) . zipWithPrev $
   ] 
 
 -- couldn't figure out how to make doubleMirror work perfectly so here's a hack
-stdSwaps :: IntMap Int
-stdSwaps = M.fromList . map (bimap fromIntegral fromIntegral) . doubleMirror $
+stdSwaps :: Map Char Char
+stdSwaps = M.fromList . doubleMirror $
   [
-    (7,13),
-    (4,12), 
-    (24,5), 
-    (8,17),
-    (14,3)
+    ('A','E'),
+    ('J','S'),
+    ('F','Z'),
+    ('G','P'),
+    ('V','B')
   ]
 
 -- couldn't figure out how to make doubleMirror work perfectly so here's a hack
 stdRefl :: Reflector
-stdRefl = Reflector . M.fromList . map (bimap fromIntegral fromIntegral) . doubleMirror $
+stdRefl = Reflector . IM.fromList . map (bimap fromIntegral fromIntegral) . doubleMirror $
   [
     (9,21),
     (6,23),

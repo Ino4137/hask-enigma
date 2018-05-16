@@ -27,6 +27,7 @@ library:
   dependencies:
     - vector
     - containers
+    - transformers
 
 executables:
   hask-enigma-exe:

@@ -2,34 +2,61 @@
 
 module Encoding.Function where
 
-import qualified Data.IntMap as M
+import qualified Data.Map as M
+import           Data.Map (Map)
+import qualified Data.IntMap as IM
 import           Data.IntMap (IntMap)
 import qualified Data.Vector as V
 import           Data.Vector (Vector)
 import           Data.Char (chr, ord, toUpper)
 import           Data.Maybe (fromMaybe)
 import           Data.Either (fromRight)
+import           Control.Monad.Trans.State
 
 import           Encoding.Types
 import           Encoding.Std
 import           Encoding.Util (deconst)
 
-encodeCharacter :: Char -> Vector Part -> Char
-encodeCharacter c rotors = go (subtract 65 . ord $ toUpper c) F rotors
+encodeString :: Enigma -> String -> String
+encodeString Enigma{..} code = uncode . V.foldr ((:)) "" . snd $ execState (mapM encodeCharacter $ uncode code) (rotors, V.empty)
+  where 
+    -- Swapping the letters before and after encoding
+    uncode = foldr (\x acc -> case M.lookup x swaps of
+        Nothing -> x:acc
+        Just x' -> x':acc 
+      ) ""
+
+encodeCharacter :: Char -> State (Vector Part, Vector Char) ()
+encodeCharacter char = do
+  (parts, code) <- get
+  -- movement of rotors happens after encoding
+  put (rotorsNew code parts, V.snoc code $ encodeCharacterRaw parts char)
+    where
+      rotorsNew code = tick ((== 0) . rem (V.length code + 1))
+      tick :: (Int -> Bool) -> Vector Part -> Vector Part
+      tick f vec = V.foldr (\r acc -> case r of 
+          Left x -> acc
+          Right Rotor{..} -> if f interval 
+            then rotateRotorN interval acc
+            else acc
+        ) vec vec
+
+encodeCharacterRaw :: Vector Part -> Char -> Char
+encodeCharacterRaw rotors c = go (subtract 65 . ord $ toUpper c) F rotors
   where
     go :: Int -> From -> Vector Part -> Char
     -- if it reached the reflector, turn back
-    go n F (deconst -> (Left Reflector{..}, _)) = go (stateR M.! n) B (V.init rotors)
+    go n F (deconst -> (Left Reflector{..}, _)) = go (stateRef IM.! n) B (V.init rotors)
     -- step forward
-    go n F (deconst -> (Right Rotor{..}, xs)) = go (forward $ state V.! n) F xs
+    go n F (deconst -> (Right Rotor{..}, xs)) = go (forward $ stateRot V.! n) F xs
     -- if the rank is 1, means we hit the first rotor
     go n B (checkRank . V.last -> 1) = chr (n + 65)
     -- step backwards
-    go n B xs@(V.last -> Right Rotor{..}) = go (backward $ state V.! n) B (V.init xs)
+    go n B xs@(V.last -> Right Rotor{..}) = go (backward $ stateRot V.! n) B (V.init xs)
 
 
 -- TODO: make it offset rotors to the starting position
-buildEnigma :: Maybe Int -> Maybe (Vector Int) -> Maybe (IntMap Int)
+buildEnigma :: Maybe Int -> Maybe (Vector Int) -> Maybe (Map Char Char)
       -> Maybe Reflector -> Enigma
 buildEnigma amm offsets swaps refl = Enigma rotorsN 
   (fromMaybe stdOffsets offsets)
@@ -53,12 +80,12 @@ checkRank (Right Rotor{..}) = interval
 -- (messy but it just werks)
 rotateRotorN :: Int -> Vector Part -> Vector Part
 rotateRotorN n rotors = 
-  let rotor1@(Rotor inte clock state) = updateForward $ unPart (n-1)
+  let rotor1@(Rotor inte clock stateRot) = updateForward $ unPart (n-1)
       -- if the clock hits the new rotation, rotate the previous rotor
       accForClock = if inte > 2 && ((clock+1) `rem` 26 == 0) then
           rotateRotorN (n-1) $ reInsert (n-1) (V.singleton . Right $ moveClock rotor1) rotors
         else reInsert (n-1) (V.singleton . Right $ moveClock rotor1) rotors
-      -- update the previous rotor's backward connection
+      -- update the next rotor's backward connection if it isn't a reflector
       rotorsNew = if V.length rotors - n /= 1 then
           reInsert n (V.singleton $ Right (updateBackward $ unPart n)) accForClock
         else accForClock
@@ -68,7 +95,7 @@ rotateRotorN n rotors =
       unPart n = fromRight (error "unPart: hit reflector") (rotors V.! (n-1))
 
 updateBackward :: Rotor -> Rotor
-updateBackward rotor = rotor { state=(fmap f (state rotor)) } 
+updateBackward rotor = rotor { stateRot=(fmap f (stateRot rotor)) } 
   where
     f (Connection f b) = Connection f $ (b-1) `mod` 26
 
@@ -76,6 +103,6 @@ moveClock :: Rotor -> Rotor
 moveClock rotor = rotor { interval = ((interval rotor +1) `rem` 26)}
 
 updateForward :: Rotor -> Rotor
-updateForward rotor = rotor{ state=(fmap f (state rotor)) } 
+updateForward rotor = rotor{ stateRot=(fmap f (stateRot rotor)) } 
   where
     f (Connection f b) = Connection ((f+1) `mod` 26) b
