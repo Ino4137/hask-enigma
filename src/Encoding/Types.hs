@@ -4,21 +4,21 @@ import Data.Vector (Vector)
 import Data.IntMap (IntMap)
 
 data Connection = Connection {
-  forward :: Word,
-  backward :: Word
+  forward :: Int,
+  backward :: Int
 } deriving Show
 
 data Rotor = Rotor {
   -- How often the rotor will move on its own, also it's "number"
-  interval :: Word,
+  interval :: Int,
   -- clock that once reaches 26 pushes rotor behind it a rotation further
-  clock :: Word,
+  clock :: Int,
   state :: Vector Connection
 } deriving Show
 
 newtype Reflector = Reflector {
   -- used IntMap for the ease of use
-  stateR :: IntMap Word
+  stateR :: IntMap Int
 } deriving Show
 
 data From = 
@@ -30,12 +30,12 @@ type Part = Either Reflector Rotor
 
 data Enigma = Enigma {
   -- amount of rotors
-  rotorsN :: Word,
+  rotorsN :: Int,
   -- starting positions, with 0 as a no-offset
-  sPositions :: Vector Word,
+  sPositions :: Vector Int,
   -- the whole machinery
   rotors :: Vector Part,
   -- redirecting bidirectionally
-  swaps :: IntMap Word
+  swaps :: IntMap Int
 } deriving Show
 

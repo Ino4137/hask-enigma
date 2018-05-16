@@ -21,3 +21,6 @@ makeRotors conn = do
 
 doubleMirror :: [(a,a)] ->  [(a,a)]
 doubleMirror = concatMap (\x -> [x, swap x])
+
+deconst :: V.Vector Part -> (Part, Vector Part)
+deconst = (,) <$> V.head <*> V.tail

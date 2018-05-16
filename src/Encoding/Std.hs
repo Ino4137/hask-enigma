@@ -9,11 +9,11 @@ import           Data.Bifunctor
 import Encoding.Types
 import Encoding.Util
 
-stdAmm :: Word
+stdAmm :: Int
 stdAmm = 8
 
 -- meaningless numbers
-stdOffsets :: Vector Word
+stdOffsets :: Vector Int
 stdOffsets = V.fromList [3,1,5,1,5,9,2,6,5,3,5,8,9,7,9,3]
 
 stdRotors :: Vector Part
@@ -34,7 +34,7 @@ stdRotors = makeRotors . (V.map . V.map) (uncurry Connection) . zipWithPrev $
   ] 
 
 -- couldn't figure out how to make doubleMirror work perfectly so here's a hack
-stdSwaps :: IntMap Word
+stdSwaps :: IntMap Int
 stdSwaps = M.fromList . map (bimap fromIntegral fromIntegral) . doubleMirror $
   [
     (7,13),
