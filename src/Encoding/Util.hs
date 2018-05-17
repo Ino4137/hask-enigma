@@ -1,9 +1,9 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns, ParallelListComp #-}
 
 module Encoding.Util where
 
-import qualified Data.IntMap as M
-import           Data.IntMap (IntMap)
+import qualified Data.IntMap as IM
+import           Data.IntMap (IntMap, Key)
 import qualified Data.Vector as V
 import           Data.Vector (Vector)
 import           Data.Tuple
@@ -12,8 +12,8 @@ import           Data.Char (toUpper, ord)
 
 import Encoding.Types
 
-zipWithPrev :: [[Int]] -> Vector (Vector (Int,Int))
-zipWithPrev lst = V.fromList . map V.fromList $ routine [0..] lst
+zipWithPrev :: [[Int]] -> Vector [Connection]
+zipWithPrev lst = V.fromList $ routine [0..] lst
   where
     -- to zip the first rotor
     routine keyboard (this:next) = zip this keyboard : go this next
@@ -25,10 +25,16 @@ zipWithPrev lst = V.fromList . map V.fromList $ routine [0..] lst
       Nothing -> error "unsafeElemIndex: no element found"
       Just n -> n
 
-makeRotors :: Vector (Vector Connection) -> Vector Part
+makeRotors :: Vector [Connection] -> Vector Part
 makeRotors conn = do
   (int,con) <- V.zip (V.enumFromN 1 (V.length conn)) conn
-  return . Right $ Rotor int 0 con
+  return . Right $ Rotor int 0 (IM.fromList $ connections con)
+    where
+      connections lst = [
+          (i,xy)
+            | i <- [0..]
+            | xy <- lst
+        ]
 
 doubleMirror :: [(a,a)] ->  [(a,a)]
 doubleMirror = concatMap (\x -> [x, swap x])

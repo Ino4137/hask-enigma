@@ -4,17 +4,14 @@ import Data.Vector (Vector)
 import Data.IntMap (IntMap)
 import Data.Map    (Map)
 
-data Connection = Connection {
-  forward :: Int,
-  backward :: Int
-} deriving Show
+type Connection = (Int,Int)
 
 data Rotor = Rotor {
   -- How often the rotor will move on its own, also it's "number"
   interval :: Int,
   -- clock that once reaches 26 pushes rotor behind it a rotation further
   clock :: Int,
-  stateRot :: Vector Connection
+  stateRot :: IntMap Connection
 } deriving Show
 
 newtype Reflector = Reflector {

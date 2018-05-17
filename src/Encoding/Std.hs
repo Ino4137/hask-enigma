@@ -19,7 +19,7 @@ stdOffsets :: Vector Int
 stdOffsets = V.fromList [3,1,5,1,5,9,2,6,5,3,5,8,9,7,9,3]
 
 stdRotors :: Vector Part
-stdRotors = makeRotors . (V.map . V.map) (uncurry Connection) . zipWithPrev $
+stdRotors = makeRotors . zipWithPrev $
   [
     [13,5,9,20,22,14,2,0,12,25,16,7,10,19,11,4,24,8,21,15,1,6,3,18,23,17],
     [4,9,10,7,1,5,11,6,3,8,2,0,12,13,14,15,16,17,18,19,20,21,22,23,24,25],
@@ -35,7 +35,6 @@ stdRotors = makeRotors . (V.map . V.map) (uncurry Connection) . zipWithPrev $
     [1,2,19,8,12,11,15,10,25,9,7,0,21,24,3,18,17,13,14,20,22,5,16,6,23,4]
   ] 
 
--- couldn't figure out how to make doubleMirror work perfectly so here's a hack
 stdSwaps :: Map Char Char
 stdSwaps = M.fromList . doubleMirror $
   [
@@ -46,9 +45,8 @@ stdSwaps = M.fromList . doubleMirror $
     ('V','B')
   ]
 
--- couldn't figure out how to make doubleMirror work perfectly so here's a hack
 stdRefl :: Reflector
-stdRefl = Reflector . IM.fromList . map (bimap fromIntegral fromIntegral) . doubleMirror $
+stdRefl = Reflector . IM.fromList . doubleMirror $
   [
     (9,21),
     (6,23),

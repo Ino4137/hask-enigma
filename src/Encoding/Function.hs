@@ -49,30 +49,26 @@ encodeCharacterRaw rotors c = go (subtract 65 . ord $ toUpper c) F rotors
     --getIndex a = V.findIndex ((==a) . backward) (unRotor V.head rotors) 
     go :: Int -> From -> Vector Part -> Char
     -- if it reached the reflector, turn back
-    go n F (deconst -> (Left Reflector{..}, _)) = go (stateRef IM.! n) B (prepareForBackwards rotors)
+    go n F (deconst -> (Left Reflector{..}, _)) = go ( stateRef IM.! n) B (V.init rotors)
     -- step forward
-    go n F (deconst -> (Right Rotor{..}, xs)) = go (forward $ stateRot V.! n) F xs
+    go n F (deconst -> (Right Rotor{..}, xs)) = go (fst $ stateRot IM.! n) F xs
     -- if the rank is 1, means we hit the first rotor
-    go n B rot@(checkRank . V.last -> 1) = chr $ (backward $ (unRotor V.last rot) V.! n) + 65
+    go n B rot@(checkRank . V.last -> 1) = chr $ (snd $ (unRotor V.last rot) IM.! n) + 65
     -- step backwards
-    go n B xs@(V.last -> Right Rotor{..}) = go (backward $ stateRot V.! n) B (V.init xs)
+    go n B xs@(V.last -> Right Rotor{..}) = go (snd $ stateRot IM.! n) B (V.init xs)
     
-    -- it's how it works and it works. 
-    prepareForBackwards :: Vector Part -> Vector Part
-    prepareForBackwards = V.fromList . map (Right . updateS (V.fromList . sortOn forward . V.toList) . fromRight (error "")) . V.toList . V.init
     unRotor f rot = case f rot of 
       Right Rotor{..} -> stateRot
       _ -> error "unRotor: part was a reflector"
-    updateS f rotoh@Rotor{..} = 
-      let new = f stateRot
-      in rotoh {stateRot=new}
+
+    updateS f Rotor{stateRot=f->stateRot,..} = Rotor{..}
         
 -- TODO: make it offset rotors to the starting position
 buildEnigma :: Maybe Int -> Maybe (Vector Int) -> Maybe (Map Char Char)
       -> Maybe Reflector -> Enigma
 buildEnigma amm offsets swaps refl = Enigma rotorsN 
   (fromMaybe stdOffsets offsets)
-  (V.snoc (V.take (rotorsN) stdRotors) reflector)
+  (V.snoc (V.take rotorsN stdRotors) reflector)
   (fromMaybe stdSwaps swaps)
     where 
       rotorsN = fromMaybe stdAmm amm
@@ -107,14 +103,14 @@ rotateRotorN n rotors =
       unPart n = fromRight (error "unPart: hit reflector") (rotors V.! (n-1))
 
 updateBackward :: Rotor -> Rotor
-updateBackward rotor = rotor { stateRot=(fmap f (stateRot rotor)) } 
+updateBackward Rotor{..} = Rotor{stateRot= (fmap.fmap) f stateRot,..}
   where
-    f (Connection f b) = Connection f $ (b-1) `mod` 26
+    f val = (val-1) `mod` 26
 
 moveClock :: Rotor -> Rotor
 moveClock rotor = rotor { interval = ((interval rotor +1) `rem` 26)}
 
 updateForward :: Rotor -> Rotor
-updateForward rotor = rotor{ stateRot=(fmap f (stateRot rotor)) } 
+updateForward Rotor{..} = Rotor{stateRot= IM.mapKeys f stateRot,..}
   where
-    f (Connection f b) = Connection ((f+1) `mod` 26) b
+    f val = (val+1) `mod` 26
