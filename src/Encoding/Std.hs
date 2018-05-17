@@ -12,7 +12,7 @@ import           Encoding.Types
 import           Encoding.Util
 
 stdAmm :: Int
-stdAmm = 3
+stdAmm = 1
 
 -- meaningless numbers
 stdOffsets :: Vector Int

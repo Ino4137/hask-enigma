@@ -11,6 +11,8 @@ import           Data.Vector (Vector)
 import           Data.Char (chr, ord, toUpper)
 import           Data.Maybe (fromMaybe)
 import           Data.Either (fromRight)
+import           Data.Maybe (fromJust)
+import           Data.List (sortOn)
 import           Control.Monad.Trans.State
 
 import           Encoding.Types
@@ -44,17 +46,27 @@ encodeCharacter char = do
 encodeCharacterRaw :: Vector Part -> Char -> Char
 encodeCharacterRaw rotors c = go (subtract 65 . ord $ toUpper c) F rotors
   where
+    --getIndex a = V.findIndex ((==a) . backward) (unRotor V.head rotors) 
     go :: Int -> From -> Vector Part -> Char
     -- if it reached the reflector, turn back
-    go n F (deconst -> (Left Reflector{..}, _)) = go (stateRef IM.! n) B (V.init rotors)
+    go n F (deconst -> (Left Reflector{..}, _)) = go (stateRef IM.! n) B (prepareForBackwards rotors)
     -- step forward
     go n F (deconst -> (Right Rotor{..}, xs)) = go (forward $ stateRot V.! n) F xs
     -- if the rank is 1, means we hit the first rotor
-    go n B (checkRank . V.last -> 1) = chr (n + 65)
+    go n B rot@(checkRank . V.last -> 1) = chr $ (backward $ (unRotor V.last rot) V.! n) + 65
     -- step backwards
     go n B xs@(V.last -> Right Rotor{..}) = go (backward $ stateRot V.! n) B (V.init xs)
-
-
+    
+    -- it's how it works and it works. 
+    prepareForBackwards :: Vector Part -> Vector Part
+    prepareForBackwards = V.fromList . map (Right . updateS (V.fromList . sortOn forward . V.toList) . fromRight (error "")) . V.toList . V.init
+    unRotor f rot = case f rot of 
+      Right Rotor{..} -> stateRot
+      _ -> error "unRotor: part was a reflector"
+    updateS f rotoh@Rotor{..} = 
+      let new = f stateRot
+      in rotoh {stateRot=new}
+        
 -- TODO: make it offset rotors to the starting position
 buildEnigma :: Maybe Int -> Maybe (Vector Int) -> Maybe (Map Char Char)
       -> Maybe Reflector -> Enigma
