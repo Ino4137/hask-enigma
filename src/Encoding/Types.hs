@@ -4,7 +4,7 @@ import Data.Vector (Vector)
 import Data.IntMap (IntMap)
 import Data.Map    (Map)
 
-type Connection = (Int,Int)
+type Connection = Int
 
 data Rotor = Rotor {
   -- How often the rotor will move on its own, also it's "number"

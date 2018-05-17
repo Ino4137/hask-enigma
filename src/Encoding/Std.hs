@@ -12,14 +12,14 @@ import           Encoding.Types
 import           Encoding.Util
 
 stdAmm :: Int
-stdAmm = 1
+stdAmm = 3
 
 -- meaningless numbers
 stdOffsets :: Vector Int
 stdOffsets = V.fromList [3,1,5,1,5,9,2,6,5,3,5,8,9,7,9,3]
 
 stdRotors :: Vector Part
-stdRotors = makeRotors . zipWithPrev $
+stdRotors = makeRotors . V.fromList $
   [
     [13,5,9,20,22,14,2,0,12,25,16,7,10,19,11,4,24,8,21,15,1,6,3,18,23,17],
     [4,9,10,7,1,5,11,6,3,8,2,0,12,13,14,15,16,17,18,19,20,21,22,23,24,25],

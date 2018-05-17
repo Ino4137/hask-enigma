@@ -14,6 +14,7 @@ import           Data.Either (fromRight)
 import           Data.Maybe (fromJust)
 import           Data.List (sortOn)
 import           Control.Monad.Trans.State
+import           Data.Tuple (swap)
 
 import           Encoding.Types
 import           Encoding.Std
@@ -49,14 +50,17 @@ encodeCharacterRaw rotors c = go (subtract 65 . ord $ toUpper c) F rotors
     --getIndex a = V.findIndex ((==a) . backward) (unRotor V.head rotors) 
     go :: Int -> From -> Vector Part -> Char
     -- if it reached the reflector, turn back
-    go n F (deconst -> (Left Reflector{..}, _)) = go ( stateRef IM.! n) B (V.init rotors)
+    go n F (deconst -> (Left Reflector{..}, _)) = go (stateRef IM.! n) B (prepareForBackwards rotors)
     -- step forward
-    go n F (deconst -> (Right Rotor{..}, xs)) = go (fst $ stateRot IM.! n) F xs
+    go n F (deconst -> (Right Rotor{..}, xs)) = go (stateRot IM.! n) F xs
     -- if the rank is 1, means we hit the first rotor
-    go n B rot@(checkRank . V.last -> 1) = chr $ (snd $ (unRotor V.last rot) IM.! n) + 65
+    go n B rot@(checkRank . V.last -> 1) = chr $ ((unRotor V.last rot) IM.! n) + 65
     -- step backwards
-    go n B xs@(V.last -> Right Rotor{..}) = go (snd $ stateRot IM.! n) B (V.init xs)
+    go n B xs@(V.last -> Right Rotor{..}) = go (stateRot IM.! n) B (V.init xs)
     
+    -- it just works. 
+    prepareForBackwards :: Vector Part -> Vector Part
+    prepareForBackwards = V.fromList . map (Right . updateS (IM.fromList . map swap . IM.toList) . fromRight (error "")) . V.toList . V.init
     unRotor f rot = case f rot of 
       Right Rotor{..} -> stateRot
       _ -> error "unRotor: part was a reflector"
@@ -103,7 +107,7 @@ rotateRotorN n rotors =
       unPart n = fromRight (error "unPart: hit reflector") (rotors V.! (n-1))
 
 updateBackward :: Rotor -> Rotor
-updateBackward Rotor{..} = Rotor{stateRot= (fmap.fmap) f stateRot,..}
+updateBackward Rotor{..} = Rotor{stateRot= fmap f stateRot,..}
   where
     f val = (val-1) `mod` 26
 
