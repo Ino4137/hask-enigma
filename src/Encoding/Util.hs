@@ -12,19 +12,6 @@ import           Data.Char (toUpper, ord)
 
 import Encoding.Types
 
-zipWithPrev :: [[Int]] -> Vector [Connection]
-zipWithPrev lst = V.fromList $ routine [0..] lst
-  where
-    -- to zip the first rotor
-    routine keyboard (this:next) = zip this keyboard : go this next
-    go _ [] = []
-    go prev (this:next) = zipByIndex 0 this prev : go this next
-    zipByIndex _ [] _ = []
-    zipByIndex n (x:xs) prev = (x, unsafeElemIndex n prev) : zipByIndex (n+1) xs prev
-    unsafeElemIndex x xs = case elemIndex x xs of
-      Nothing -> error "unsafeElemIndex: no element found"
-      Just n -> n
-
 makeRotors :: Vector [Connection] -> Vector Part
 makeRotors conn = do
   (int,con) <- V.zip (V.enumFromN 1 (V.length conn)) conn
