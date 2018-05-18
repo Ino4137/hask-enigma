@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, ViewPatterns #-}
+{-# LANGUAGE RecordWildCards, ViewPatterns, TupleSections #-}
 
 module Encoding.Function where
 
@@ -14,6 +14,8 @@ import           Data.Either (fromRight)
 import           Data.Maybe (fromJust)
 import           Data.List (sortOn)
 import           Control.Monad.Trans.State
+import           Control.Monad.IO.Class
+import           Text.Printf
 import           Data.Tuple (swap)
 
 import           Encoding.Types
@@ -21,11 +23,11 @@ import           Encoding.Std
 import           Encoding.Util (deconst)
 
 encodeString :: Enigma -> String -> String
-encodeString Enigma{..} code = uncode . V.foldr ((:)) "" . snd $ execState (mapM encodeCharacter $ uncode code) (rotors, V.empty)
+encodeString Enigma{..} code = uncode . V.foldr ((:)) "" . snd $ execState ((mapM . mapM) encodeCharacter . fmap uncode $ words code) (rotors, V.empty)
   where 
     -- Swapping the letters before and after encoding
-    uncode = foldr (\x acc -> case M.lookup x swaps of
-        Nothing -> x:acc
+    uncode = foldr (\x acc -> case M.lookup (toUpper x) swaps of
+        Nothing -> toUpper x:acc
         Just x' -> x':acc 
       ) ""
 
@@ -33,7 +35,33 @@ encodeCharacter :: Char -> State (Vector Part, Vector Char) ()
 encodeCharacter char = do
   (parts, code) <- get
   -- movement of rotors happens after encoding
-  put (rotorsNew code parts, V.snoc code $ encodeCharacterRaw parts char)
+  put $ (,V.snoc code $ encodeCharacterRaw parts char) (rotorsNew code parts)
+    where
+      rotorsNew code = tick ((== 0) . rem (V.length code + 1))
+      tick :: (Int -> Bool) -> Vector Part -> Vector Part
+      tick f vec = V.foldr (\r acc -> case r of 
+          Left x -> acc
+          Right Rotor{..} -> if f interval 
+            then rotateRotorN interval acc
+            else acc
+        ) vec vec
+
+-- same as encodeString but prints the state of each iteration of rotors
+encodeStringDebug :: Enigma -> String -> IO String
+encodeStringDebug Enigma{..} code = fmap (uncode . V.foldr ((:)) "" . snd) $ execStateT ((mapM . mapM) encodeCharacterDebug . fmap uncode $ words code) (rotors, V.empty)
+  where 
+    -- Swapping the letters before and after encoding
+    uncode = foldr (\x acc -> case M.lookup (toUpper x) swaps of
+        Nothing -> toUpper x:acc
+        Just x' -> x':acc 
+      ) ""
+
+encodeCharacterDebug :: Char -> StateT (Vector Part, Vector Char) IO ()
+encodeCharacterDebug char = do
+  (parts, code) <- get
+  -- movement of rotors happens after encoding
+  liftIO (printf "parts: %s\ncode: %s\n" (show parts) (show code))
+  put $ (,V.snoc code $ encodeCharacterRaw parts char) (rotorsNew code parts)
     where
       rotorsNew code = tick ((== 0) . rem (V.length code + 1))
       tick :: (Int -> Bool) -> Vector Part -> Vector Part
@@ -58,7 +86,7 @@ encodeCharacterRaw rotors c = go (subtract 65 . ord $ toUpper c) F rotors
     -- step backwards
     go n B xs@(V.last -> Right Rotor{..}) = go (stateRot IM.! n) B (V.init xs)
     
-    -- it just works. 
+    -- it just works.  
     prepareForBackwards :: Vector Part -> Vector Part
     prepareForBackwards = V.fromList . map (Right . updateS (IM.fromList . map swap . IM.toList) . fromRight (error "")) . V.toList . V.init
     unRotor f rot = case f rot of 
@@ -92,18 +120,17 @@ checkRank (Right Rotor{..}) = interval
 -- (messy but it just werks)
 rotateRotorN :: Int -> Vector Part -> Vector Part
 rotateRotorN n rotors = 
-  let rotor1@(Rotor inte clock stateRot) = updateForward $ unPart (n-1)
+  let rotor1@(Rotor inte clock stateRot) = updateForward $ unPart n
       -- if the clock hits the new rotation, rotate the previous rotor
       accForClock = if inte > 2 && ((clock+1) `rem` 26 == 0) then
-          rotateRotorN (n-1) $ reInsert (n-1) (V.singleton . Right $ moveClock rotor1) rotors
-        else reInsert (n-1) (V.singleton . Right $ moveClock rotor1) rotors
+          rotateRotorN (n-1) $ V.update rotors (V.singleton (n-1, Right $ moveClock rotor1))
+        else V.update rotors (V.singleton (n-1,Right $ moveClock rotor1))
       -- update the next rotor's backward connection if it isn't a reflector
       rotorsNew = if V.length rotors - n /= 1 then
-          reInsert n (V.singleton $ Right (updateBackward $ unPart n)) accForClock
+          V.update accForClock (V.singleton (n-1,Right (updateBackward $ unPart n)))
         else accForClock
   in rotorsNew
     where
-      reInsert n parts vec = V.take (n-1) vec V.++ parts V.++ V.drop (V.length parts) vec
       unPart n = fromRight (error "unPart: hit reflector") (rotors V.! (n-1))
 
 updateBackward :: Rotor -> Rotor
@@ -112,7 +139,7 @@ updateBackward Rotor{..} = Rotor{stateRot= fmap f stateRot,..}
     f val = (val-1) `mod` 26
 
 moveClock :: Rotor -> Rotor
-moveClock rotor = rotor { interval = ((interval rotor +1) `rem` 26)}
+moveClock Rotor{..} = Rotor{clock= (clock +1) `rem` 26,..}
 
 updateForward :: Rotor -> Rotor
 updateForward Rotor{..} = Rotor{stateRot= IM.mapKeys f stateRot,..}
