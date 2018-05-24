@@ -6,7 +6,6 @@ import qualified Data.IntMap as IM
 import           Data.IntMap (IntMap)
 import qualified Data.Vector as V
 import           Data.Vector (Vector)
-import           Data.Bifunctor
 
 import           Encoding.Types
 import           Encoding.Util

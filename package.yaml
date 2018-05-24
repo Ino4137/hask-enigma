@@ -41,6 +41,7 @@ executables:
     - hask-enigma
     - vector
     - containers
+    - gtk
 
 tests:
   hask-enigma-test:
